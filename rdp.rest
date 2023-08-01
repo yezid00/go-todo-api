@@ -1,0 +1,20 @@
+
+###
+POST http://127.0.0.1:5000/api/v1/auth/register HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Yezid Ola",
+    "username": "yezid0",
+    "password" : "pa$$word",
+    "confirm_password" : "pa$$word"
+}
+
+###
+POST http://127.0.0.1:5000/api/v1/auth/login HTTP/1.1
+content-type: application/json
+
+{
+    "username": "yezid0",
+    "password" : "pa$$word"
+}

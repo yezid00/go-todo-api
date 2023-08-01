@@ -15,8 +15,79 @@ import (
 )
 
 func Register(c *fiber.Ctx) error {
-	var t string
-	return c.JSON(fiber.Map{"status": "success", "message": "Success login", "data": t})
+
+	type RegisterInput struct {
+		Name            string `json:"name" form:"name"`
+		Username        string `json:"username" form:"username"`
+		Password        string `json:"password" form:"password"`
+		ConfirmPassword string `json:"confirm_password" form: "confirm_password"`
+	}
+
+	type NewUser struct {
+		Name     string `json:"name"`
+		Username string `json:"username"`
+	}
+
+	db := database.DB.Db
+
+	var input RegisterInput
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+		})
+	}
+
+	if input.Password != input.ConfirmPassword {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Password does not match",
+		})
+	}
+
+	hash, err := hashPassword(input.Password)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid Password",
+		})
+	}
+
+	user := models.User{
+		Name:     input.Name,
+		Username: input.Username,
+		Password: hash,
+	}
+
+	//query user table for existing username, if no error, that means a user exists and username
+	//is already taken
+	if err := db.Where("username = ?", user.Username).First(&user).Error; err == nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Username has already been taken",
+		})
+	}
+
+	if err := db.Create(&user).Error; err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"status":  "error",
+			"message": "An error occured creating user",
+		})
+	}
+
+	newUser := NewUser{
+		Name:     user.Name,
+		Username: user.Username,
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "message": "Created user", "data": newUser})
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
 }
 
 func Login(c *fiber.Ctx) error {
@@ -107,4 +178,40 @@ func getUserByUsername(username string) (*models.User, error) {
 func checkPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func ExtractUserId(c *fiber.Ctx) int {
+	token := c.Locals("user").(*jwt.Token)
+	claims := token.Claims.(jwt.MapClaims)
+
+	id := int(claims["user_id"].(float64))
+
+	return id
+}
+
+func GetUserById(id int) (*models.User, error) {
+	db := database.DB.Db
+
+	var user models.User
+
+	if err := db.First(&user, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func AuthenticatedUser(c *fiber.Ctx) (user *models.User, err error) {
+	id := ExtractUserId(c)
+
+	user, err = GetUserById(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
