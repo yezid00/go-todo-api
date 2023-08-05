@@ -18,3 +18,8 @@ content-type: application/json
     "username": "yezid0",
     "password" : "pa$$word"
 }
+
+###
+GET http://127.0.0.1:5000/api/v1/todos HTTP/1.1
+content-type: application/json
+Authorization : "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTExMDY1OTIsInVzZXJfaWQiOjIsInVzZXJuYW1lIjoieWV6aWQwIn0.1_-2omOZ_YP6x-MmH0t1gyubwY6Itf32VptaDemRIWI" 

@@ -8,7 +8,7 @@ import (
 func InitializeRoutes(app *fiber.App) {
 	api := app.Group("/api/v1", logger.New())
 
-	// todoRoutes(api)
+	todoRoutes(api)
 
 	authRoutes(api)
 }
